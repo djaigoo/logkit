@@ -2,7 +2,9 @@
 
 package logkit
 
-import "time"
+import (
+    "time"
+)
 
 const (
     y1  = `0123456789`
@@ -55,4 +57,19 @@ func formatTimeHeader(when time.Time) []byte {
     buf[22] = ns1[ns%10]
     
     return buf[:]
+}
+
+var tn = time.Now()
+
+func init() {
+    go func() {
+        for range time.NewTicker(1 * time.Millisecond).C {
+            tn = time.Now()
+        }
+    }()
+}
+
+func getNow() time.Time {
+    n := tn
+    return n
 }

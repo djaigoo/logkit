@@ -17,9 +17,10 @@ import (
 )
 
 const (
-    levelCount = int(levelDivision) // log level count
-    bufLogSize = 1024               // buf LogMsg size
-    preLogLen  = 64                 // 预计日志单条长度
+    levelCount    = int(levelDivision) // log level count
+    bufLogSize    = 2048               // buf LogMsg size
+    preLogLen     = 64                 // 预计日志单条长度
+    bufLogHeadLen = 28                 // 每条日志的基本长度
 )
 
 var (
@@ -27,11 +28,11 @@ var (
 )
 
 var (
-    maxSize     uint64 = 1024 * 1024 * 500       // single file size limit 50MB
+    maxSize     uint64 = 1024 * 1024 * 1024 * 5       // single file size limit 50MB
     bufferSize         = 256 * 1024              // bufio buf size
     flushTime          = 1500 * time.Millisecond // flush write file
-    fileLogSize        = 512                     // file log size
-    bufChanSize        = 256                     // chan LogMsg size
+    fileLogSize        = 256                     // fileLog channel size
+    bufChanSize        = 512                     // bufferWriter chan LogMsg size
 )
 
 var (
@@ -129,7 +130,7 @@ func (fl *fileLog) transLog() {
                 buf := pool.Get()
                 buf.Write(msg)
                 buf.WriteByte('\n')
-                lm := bufpool.LogMsg{When: time.Now(), Buf: buf}
+                lm := bufpool.LogMsg{When: getNow(), Buf: buf}
                 fl.bw[i].WriteLog(lm)
             }
             fl.wg.Done()
@@ -266,7 +267,7 @@ func (bw *bufferWriter) writeFile() {
             bw.rotateFile(0, datas[0].When)
             for i = range datas {
                 bw.writeData(datas[i])
-                bw.nbytes += uint64(datas[i].Buf.Len() + 28)
+                bw.nbytes += uint64(datas[i].Buf.Len() + bufLogHeadLen)
             }
         } else if bw.lastHour == datas[len(datas)-1].When.Hour() {
             // 粗略分割
@@ -275,7 +276,7 @@ func (bw *bufferWriter) writeFile() {
             }
             for i = range datas {
                 bw.writeData(datas[i])
-                bw.nbytes += uint64(datas[i].Buf.Len() + 28)
+                bw.nbytes += uint64(datas[i].Buf.Len() + bufLogHeadLen)
             }
         } else {
             once := sync.Once{}
@@ -290,7 +291,7 @@ func (bw *bufferWriter) writeFile() {
                     bw.nbytes = 0
                 })
                 bw.writeData(data)
-                bw.nbytes += uint64(data.Buf.Len() + 28)
+                bw.nbytes += uint64(data.Buf.Len() + bufLogHeadLen)
             }
         }
         spool.Put(datas)

@@ -38,21 +38,15 @@ func level() Level {
 }
 
 func Exit() {
-    ConsoleLog(lk.level)
     lk.Exit()
+    ConsoleLog(lk.level)
 }
 
 func Flush() {
     lk.Flush()
 }
 
-func Debug(str string) {
-    if level() <= LevelDebug {
-        lk.Write(LevelDebug, []byte(str))
-    }
-}
-
-func Debugs(args ...interface{}) {
+func Debug(args ...interface{}) {
     if level() <= LevelDebug {
         lk.Write(LevelDebug, []byte(fmt.Sprint(args...)))
     }
@@ -64,13 +58,7 @@ func Debugf(format string, args ...interface{}) {
     }
 }
 
-func Info(str string) {
-    if level() <= LevelInfo {
-        lk.Write(LevelInfo, []byte(str))
-    }
-}
-
-func Infos(args ...interface{}) {
+func Info(args ...interface{}) {
     if level() <= LevelInfo {
         lk.Write(LevelInfo, []byte(fmt.Sprint(args...)))
     }
@@ -82,13 +70,7 @@ func Infof(format string, args ...interface{}) {
     }
 }
 
-func Warn(str string) {
-    if level() <= LevelWarn {
-        lk.Write(LevelWarn, []byte(str))
-    }
-}
-
-func Warns(args ...interface{}) {
+func Warn(args ...interface{}) {
     if level() <= LevelWarn {
         lk.Write(LevelWarn, []byte(fmt.Sprint(args...)))
     }
@@ -100,13 +82,7 @@ func Warnf(format string, args ...interface{}) {
     }
 }
 
-func Error(str string) {
-    if level() <= LevelError {
-        lk.Write(LevelError, []byte(str))
-    }
-}
-
-func Errors(args ...interface{}) {
+func Error(args ...interface{}) {
     if level() <= LevelError {
         lk.Write(LevelError, []byte(fmt.Sprint(args...)))
     }
