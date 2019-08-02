@@ -1,3 +1,3 @@
-module gitlab.66xue.com/daihao/logkit
+module github.com/djaigoo/logkit
 
 go 1.12

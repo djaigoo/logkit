@@ -4,22 +4,26 @@ package logkit
 
 import (
     "bufio"
+    "encoding/json"
     "fmt"
     "io/ioutil"
     "os"
     "path/filepath"
+    "runtime"
     "strconv"
     "strings"
     "sync"
     "time"
     
-    "gitlab.66xue.com/daihao/logkit/bufpool"
+    "github.com/djaigoo/logkit/internal/bufpool"
 )
 
 const (
-    levelCount = int(levelDivision) // log level count
-    bufLogSize = 1024               // buf LogMsg size
-    preLogLen  = 64                 // 预计日志单条长度
+    levelCount        = int(levelDivision) // log level count
+    bufLogSize        = 2048               // buf LogMsg size
+    preLogLen         = 64                 // 预计日志单条长度
+    bufLogHeadLen     = TimeTagLen + 3     // [time tag] 每条日志的基本长度
+    bufJsonLogHeadLen = TimeTagLen + 15    // json log len
 )
 
 var (
@@ -27,32 +31,12 @@ var (
 )
 
 var (
-    maxSize     uint64 = 1024 * 1024 * 500       // single file size limit 50MB
+    maxSize     uint64 = 1024 * 1024 * 50        // single file size limit 50MB
     bufferSize         = 256 * 1024              // bufio buf size
-    flushTime          = 1500 * time.Millisecond // flush write file
-    fileLogSize        = 512                     // file log size
-    bufChanSize        = 256                     // chan LogMsg size
+    flushTime          = 5000 * time.Millisecond // flush write file
+    fileLogSize        = 256                     // fileLog channel size
+    bufChanSize        = 512                     // bufferWriter chan LogMsg size
 )
-
-var (
-    pool  = bufpool.NewPool(preLogLen)
-    spool = bufpool.NewSPool(bufLogSize, pool)
-)
-
-// fileObj 临时对象
-type fileObj struct{}
-
-// RotateSize 设置切换文件大小
-func (fo *fileObj) SetRotateSize(size uint64) *fileObj {
-    maxSize = size
-    return fo
-}
-
-// FlushTime 设置刷新时间
-func (fo *fileObj) SetFlushTime(ft time.Duration) *fileObj {
-    flushTime = ft
-    return fo
-}
 
 // fileLog
 type fileLog struct {
@@ -69,6 +53,10 @@ func newFileLog(basePath, logName string) *fileLog {
     for i := 0; i < levelCount; i++ {
         mch[i] = make(chan []byte, fileLogSize)
     }
+    
+    if basePath == "" {
+        basePath = "."
+    }
     bw := [levelCount]*bufferWriter{}
     for i := 0; i < levelCount; i++ {
         bw[i] = newBufferWriter(basePath, logName, Level(i))
@@ -84,6 +72,13 @@ func newFileLog(basePath, logName string) *fileLog {
     go ret.flushTicker()
     
     return ret
+}
+
+// changeTicker changeTicker
+func (fl *fileLog) changeTicker() {
+    fl.ticker.Stop()
+    fl.ticker = time.NewTicker(flushTime)
+    go fl.flushTicker()
 }
 
 func (fl *fileLog) Exit() {
@@ -129,7 +124,7 @@ func (fl *fileLog) transLog() {
                 buf := pool.Get()
                 buf.Write(msg)
                 buf.WriteByte('\n')
-                lm := bufpool.LogMsg{When: time.Now(), Buf: buf}
+                lm := bufpool.LogMsg{When: getNow(), Buf: buf}
                 fl.bw[i].WriteLog(lm)
             }
             fl.wg.Done()
@@ -199,7 +194,11 @@ func newBufferWriter(base, log string, level Level) *bufferWriter {
     }
     ret.wg.Add(1)
     go func() {
-        ret.writeFile()
+        if level == LevelJson {
+            ret.writeFile(bufJsonLogHeadLen, ret.writeJsonData)
+        } else {
+            ret.writeFile(bufLogHeadLen, ret.writeData)
+        }
         ret.wg.Done()
     }()
     return ret
@@ -249,7 +248,8 @@ func (bw *bufferWriter) Flush() {
     bw.lmch <- buf[:offset]
 }
 
-func (bw *bufferWriter) writeFile() {
+func (bw *bufferWriter) writeFile(slen int, writeData func(data bufpool.LogMsg)) {
+    runtime.LockOSThread()
     var datas []bufpool.LogMsg
     for datas = range bw.lmch {
         if len(datas) == 0 {
@@ -265,8 +265,8 @@ func (bw *bufferWriter) writeFile() {
             bw.lastHour = datas[0].When.Hour()
             bw.rotateFile(0, datas[0].When)
             for i = range datas {
-                bw.writeData(datas[i])
-                bw.nbytes += uint64(datas[i].Buf.Len() + 28)
+                writeData(datas[i])
+                bw.nbytes += uint64(datas[i].Buf.Len() + slen)
             }
         } else if bw.lastHour == datas[len(datas)-1].When.Hour() {
             // 粗略分割
@@ -274,14 +274,14 @@ func (bw *bufferWriter) writeFile() {
                 bw.rotateFile(bw.slot+1, datas[len(datas)-1].When)
             }
             for i = range datas {
-                bw.writeData(datas[i])
-                bw.nbytes += uint64(datas[i].Buf.Len() + 28)
+                writeData(datas[i])
+                bw.nbytes += uint64(datas[i].Buf.Len() + slen)
             }
         } else {
             once := sync.Once{}
             for _, data := range datas {
                 if data.When.Hour() != bw.lastHour {
-                    bw.writeData(data)
+                    writeData(data)
                     continue
                 }
                 once.Do(func() {
@@ -289,13 +289,15 @@ func (bw *bufferWriter) writeFile() {
                     bw.rotateFile(0, data.When)
                     bw.nbytes = 0
                 })
-                bw.writeData(data)
-                bw.nbytes += uint64(data.Buf.Len() + 28)
+                writeData(data)
+                bw.nbytes += uint64(data.Buf.Len() + slen)
             }
         }
         spool.Put(datas)
         bw.Writer.Flush()
     }
+    
+    runtime.UnlockOSThread()
 }
 
 func (bw *bufferWriter) writeData(data bufpool.LogMsg) {
@@ -304,6 +306,19 @@ func (bw *bufferWriter) writeData(data bufpool.LogMsg) {
     bw.Writer.WriteByte(']')
     bw.Writer.WriteByte(' ')
     bw.Writer.Write(data.Buf.Bytes())
+}
+
+// logTime
+type logTime struct {
+    Timestamp string `json:"timestamp"`
+}
+
+func (bw *bufferWriter) writeJsonData(data bufpool.LogMsg) {
+    lt := &logTime{formatTimeHeaderString(data.When)}
+    timestamp, _ := json.Marshal(lt)
+    bw.Writer.Write(timestamp[:len(timestamp)-1])
+    bw.Writer.WriteByte(',')
+    bw.Writer.Write(data.Buf.Bytes()[1:])
 }
 
 func (bw *bufferWriter) rotateFile(slot int, when time.Time) {
@@ -317,7 +332,8 @@ func (bw *bufferWriter) rotateFile(slot int, when time.Time) {
     }
     file, err := createFile(bw.basePath, bw.logName, bw.level, slot, when)
     if err != nil {
-        panic(err.Error())
+        // panic(err.Error())
+        return
     }
     bw.file = file
     bw.nbytes = 0

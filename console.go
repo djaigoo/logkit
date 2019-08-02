@@ -3,10 +3,9 @@
 package logkit
 
 import (
-    "bytes"
+    "encoding/json"
     "io"
     "os"
-    "time"
 )
 
 // consoleLog
@@ -30,16 +29,28 @@ func (cl *consoleLog) Flush() {
 }
 
 func (cl *consoleLog) Write(level Level, msg []byte) {
-    if level == LevelJson {
-        cl.writer.Write(append(colors[level](msg), '\n'))
-        return
+    when := getNow()
+    str := pool.Get()
+    switch level {
+    case LevelJson:
+        lt := &logTime{formatTimeHeaderString(when)}
+        timestamp, _ := json.Marshal(lt)
+        str.Write(timestamp[:len(timestamp)-1])
+        str.WriteByte(',')
+        str.Write(msg[1:])
+    case LevelTrace:
+        str.Write(msg)
+    default:
+        str.Write(formatTimeHeader(when))
+        str.WriteByte(' ')
+        str.Write(logName[level])
+        str.WriteByte(' ')
+        str.Write(msg)
     }
-    when := time.Now()
-    str := bytes.NewBuffer(formatTimeHeader(when))
-    str.WriteByte(' ')
-    str.Write(logName[level])
-    str.WriteByte(' ')
-    str.Write(msg)
-    
-    cl.writer.Write(append(colors[level](str.Bytes()), '\n'))
+    if c, ok := colors[level]; ok {
+        cl.writer.Write(append(c(str.Bytes()), '\n'))
+    } else {
+        cl.writer.Write(append(str.Bytes(), '\n'))
+    }
+    pool.Put(str)
 }

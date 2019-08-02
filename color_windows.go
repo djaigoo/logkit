@@ -14,18 +14,19 @@ var (
     w32Cyan    = []byte{27, 91, 52, 54, 109}
 )
 
-var colors = []brush{
-    newBrush(),
-    newBrush(),
-    newBrush(),
-    newBrush(),
-    newBrush(),
-    newBrush(),
-    
-    newBrush(),
-    newBrush(),
-    newBrush(),
-    newBrush(),
+var colors = map[Level]brush{
+    LevelDefault:   newBrush(), // Default
+    LevelDebug:     newBrush(), // Debug
+    LevelWarn:      newBrush(), // Warning
+    LevelInfo:      newBrush(), // Informational
+    LevelError:     newBrush(), // Error
+    levelDivision:  newBrush(), // Default
+    LevelJson:      newBrush(), // JSON
+    LevelTrace:     newBrush(), // Trace
+    LevelEmergency: newBrush(), // Emergency
+    LevelAlert:     newBrush(), // Alert
+    LevelCritical:  newBrush(), // Critical
+    LevelNotice:    newBrush(), // Notice
 }
 
 // brush is a color join function
