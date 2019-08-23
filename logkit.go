@@ -3,9 +3,11 @@
 package logkit
 
 import (
+    "bytes"
     "encoding/json"
     "errors"
     "fmt"
+    "runtime/debug"
 )
 
 // Logkit
@@ -38,8 +40,12 @@ func level() Level {
 }
 
 func Exit() {
-    lk.Exit()
-    ConsoleLog(lk.level)
+    tt := &Logkit{
+        level:     lk.level,
+        LogWriter: newConsoleLog(lk.level),
+    }
+    lk, tt = tt, lk
+    tt.Exit()
 }
 
 func Flush() {
@@ -94,12 +100,29 @@ func Errorf(format string, args ...interface{}) {
     }
 }
 
-// JSON 打印日志格式不带时间戳，每行一个json串
 func JSON(v interface{}) error {
-    str, err := json.Marshal(v)
-    if err != nil {
-        return errors.New("JSON data is empty")
+    if level() <= LevelJson {
+        str, err := json.Marshal(v)
+        if err != nil {
+            return errors.New("JSON data is empty")
+        }
+        if len(str) == 0 {
+            return nil
+        }
+        lk.Write(LevelJson, str)
     }
-    lk.Write(LevelJson, str)
     return nil
+}
+
+// Trace console print func trace
+func Trace() {
+    if _, ok := lk.LogWriter.(*consoleLog); !ok {
+        return
+    }
+    trace := debug.Stack()
+    head := trace[:bytes.Index(trace, []byte{'\n'})+1]
+    for i := 0; i < 5; i++ {
+        trace = trace[bytes.Index(trace, []byte{'\n'})+1:]
+    }
+    lk.Write(LevelTrace, append(head, trace...))
 }

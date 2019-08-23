@@ -38,16 +38,17 @@ func newBrush(color []byte) brush {
     }
 }
 
-var colors = []brush{
-    newBrush(white),  // Default
-    newBrush(bblue),  // Debug
-    newBrush(yellow), // Warning
-    newBrush(blue),   // Informational
-    newBrush(red),    // Error
-    newBrush(green),  // JSON
-    
-    newBrush(white),   // Emergency
-    newBrush(cyan),    // Alert
-    newBrush(magenta), // Critical
-    newBrush(green),   // Notice
+var colors = map[Level]brush{
+    LevelDefault:   newBrush(white),   // Default
+    LevelDebug:     newBrush(bblue),   // Debug
+    LevelWarn:      newBrush(yellow),  // Warning
+    LevelInfo:      newBrush(blue),    // Informational
+    LevelError:     newBrush(red),     // Error
+    levelDivision:  newBrush(white),   // Default
+    LevelJson:      newBrush(black),   // JSON
+    LevelTrace:     newBrush(magenta), // Trace
+    LevelEmergency: newBrush(white),   // Emergency
+    LevelAlert:     newBrush(cyan),    // Alert
+    LevelCritical:  newBrush(magenta), // Critical
+    LevelNotice:    newBrush(green),   // Notice
 }

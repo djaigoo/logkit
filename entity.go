@@ -2,6 +2,10 @@
 
 package logkit
 
+import (
+    "gitlab.66xue.com/daihao/logkit/bufpool"
+)
+
 type Level uint8
 
 const (
@@ -10,9 +14,16 @@ const (
     LevelWarn
     LevelInfo
     LevelError
-    levelDivision
     LevelJson
+    levelDivision
+    
+    LevelTrace
+    LevelEmergency
+    LevelAlert
+    LevelCritical
+    LevelNotice
     levelMax
+    LevelNon = levelMax // not use log
 )
 
 var (
@@ -33,4 +44,9 @@ var (
         LevelInfo:    {'[', 'I', ']'},
         LevelError:   {'[', 'E', ']'},
     }
+)
+
+var (
+    pool  = bufpool.NewPool(preLogLen)
+    spool = bufpool.NewSPool(bufLogSize, pool)
 )
