@@ -3,7 +3,7 @@
 package logkit
 
 import (
-    "gitlab.66xue.com/daihao/logkit/bufpool"
+    "gitlab.66xue.com/daihao/logkit/internal/bufpool"
 )
 
 type Level uint8
@@ -43,6 +43,11 @@ var (
         LevelWarn:    {'[', 'W', ']'},
         LevelInfo:    {'[', 'I', ']'},
         LevelError:   {'[', 'E', ']'},
+        
+        LevelEmergency: {'[', 'M', ']'},
+        LevelAlert:     {'[', 'A', ']'},
+        LevelCritical:  {'[', 'C', ']'},
+        LevelNotice:    {'[', 'N', ']'},
     }
 )
 

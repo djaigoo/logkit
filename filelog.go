@@ -15,7 +15,7 @@ import (
     "sync"
     "time"
     
-    "gitlab.66xue.com/daihao/logkit/bufpool"
+    "gitlab.66xue.com/daihao/logkit/internal/bufpool"
 )
 
 const (
@@ -37,21 +37,6 @@ var (
     fileLogSize        = 256                     // fileLog channel size
     bufChanSize        = 512                     // bufferWriter chan LogMsg size
 )
-
-// fileObj 临时对象
-type fileObj struct{}
-
-// RotateSize 设置切换文件大小
-func (fo *fileObj) SetRotateSize(size uint64) *fileObj {
-    maxSize = size
-    return fo
-}
-
-// FlushTime 设置刷新时间
-func (fo *fileObj) SetFlushTime(ft time.Duration) *fileObj {
-    flushTime = ft
-    return fo
-}
 
 // fileLog
 type fileLog struct {
@@ -87,6 +72,13 @@ func newFileLog(basePath, logName string) *fileLog {
     go ret.flushTicker()
     
     return ret
+}
+
+// changeTicker changeTicker
+func (fl *fileLog) changeTicker() {
+    fl.ticker.Stop()
+    fl.ticker = time.NewTicker(flushTime)
+    go fl.flushTicker()
 }
 
 func (fl *fileLog) Exit() {

@@ -44,7 +44,7 @@ var colors = map[Level]brush{
     LevelWarn:      newBrush(yellow),  // Warning
     LevelInfo:      newBrush(blue),    // Informational
     LevelError:     newBrush(red),     // Error
-    levelDivision:  newBrush(white),   // Default
+    levelDivision:  newBrush(white),   // Default Meaningless
     LevelJson:      newBrush(black),   // JSON
     LevelTrace:     newBrush(magenta), // Trace
     LevelEmergency: newBrush(white),   // Emergency

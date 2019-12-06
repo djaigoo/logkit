@@ -40,6 +40,10 @@ func formatTimeHeader(when time.Time) []byte {
     if bkTime.Equal(when) {
         return buf[:]
     }
+    return formatTime(when)
+}
+
+func formatTime(when time.Time) []byte {
     y, mo, d := when.Date()
     h, mi, s := when.Clock()
     ns := when.Nanosecond() / 1000000
@@ -72,17 +76,20 @@ func formatTimeHeader(when time.Time) []byte {
     return buf[:]
 }
 
+var getNow = getTimeNow
+
+func getTimeNow() time.Time {
+    // n := tn
+    return time.Now()
+}
+
 var tn = time.Now()
 
-func init() {
+func getCacheNow() time.Time {
     go func() {
         for range time.NewTicker(1 * time.Millisecond).C {
             tn = time.Now()
         }
     }()
-}
-
-func getNow() time.Time {
-    n := tn
-    return n
+    return tn
 }
