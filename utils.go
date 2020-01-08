@@ -3,6 +3,7 @@
 package logkit
 
 import (
+    "sync"
     "time"
 )
 
@@ -76,20 +77,18 @@ func formatTime(when time.Time) []byte {
     return buf[:]
 }
 
-var getNow = getTimeNow
-
-func getTimeNow() time.Time {
-    // n := tn
-    return time.Now()
-}
+var getNow = time.Now
 
 var tn = time.Now()
+var once = sync.Once{}
 
 func getCacheNow() time.Time {
-    go func() {
-        for range time.NewTicker(1 * time.Millisecond).C {
-            tn = time.Now()
-        }
-    }()
+    once.Do(func() {
+        go func() {
+            for range time.NewTicker(1 * time.Millisecond).C {
+                tn = time.Now()
+            }
+        }()
+    })
     return tn
 }
