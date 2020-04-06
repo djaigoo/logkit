@@ -30,11 +30,11 @@ var colors = map[Level]brush{
 }
 
 // brush is a color join function
-type brush func(string) string
+type brush func(text []byte) []byte
 
 // newBrush return a fix color Brush
 func newBrush() brush {
-    return func(text string) string {
+    return func(text []byte) []byte {
         return text
     }
 }
